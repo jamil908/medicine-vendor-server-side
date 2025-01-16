@@ -29,14 +29,21 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 // category
-    const categoryCollection=client.db('medicinePortal').collection('category')
+    const categoryCollection=client.db('medicinePortal').collection('category');
+    const medicineCollection = client.db('medicinePortal').collection('medicines');
+
     app.get('/category',async(req,res)=>{
         const cursor = categoryCollection.find();
         const result = await cursor.toArray()
         res.send(result)
     })
-
-
+// get medicine by category wise
+app.get('/medicines/:categoryName', async (req, res) => {
+  const categoryName = req.params.categoryName;
+  const query = { categoryName: categoryName }; // Match categoryName with the request parameter
+  const medicines = await medicineCollection.find(query).toArray();
+  res.send(medicines);
+});
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
