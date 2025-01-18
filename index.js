@@ -40,13 +40,18 @@ async function run() {
         res.send(result)
     })
 // get medicine by category wise
+
 app.get('/medicines/:categoryName', async (req, res) => {
   const categoryName = req.params.categoryName;
   const query = { categoryName: categoryName }; // Match categoryName with the request parameter
   const medicines = await medicineCollection.find(query).toArray();
   res.send(medicines);
 });
-
+app.get('/medicines', async (req, res) => {
+  const cursor = medicineCollection.find();
+        const result = await cursor.toArray()
+        res.send(result)
+});
 // post users data
 app.post('/users/:email',async(req,res)=>{
   const email = req.params.email;
