@@ -31,6 +31,8 @@ async function run() {
 // category
     const categoryCollection=client.db('medicinePortal').collection('category');
     const medicineCollection = client.db('medicinePortal').collection('medicines');
+    // users
+    const usersCollection = client.db('medicinePortal').collection('users');
 
     app.get('/category',async(req,res)=>{
         const cursor = categoryCollection.find();
@@ -44,6 +46,26 @@ app.get('/medicines/:categoryName', async (req, res) => {
   const medicines = await medicineCollection.find(query).toArray();
   res.send(medicines);
 });
+
+// post users data
+app.post('/users/:email',async(req,res)=>{
+  const email = req.params.email;
+  const query = {email}
+  const user = req.body
+  // check if user exist in database
+  const isExist = await usersCollection.findOne(query);
+  if(isExist){
+    return res.send(isExist)
+  }
+  const result = await usersCollection.insertOne({...user,
+       role:'user',
+    timestamp : Date.now(),
+  })
+  res.send(result)
+})
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
