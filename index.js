@@ -31,6 +31,7 @@ async function run() {
 // category
     const categoryCollection=client.db('medicinePortal').collection('category');
     const medicineCollection = client.db('medicinePortal').collection('medicines');
+    const cartCollection = client.db('medicinePortal').collection('carts');
     // users
     const usersCollection = client.db('medicinePortal').collection('users');
 
@@ -70,6 +71,18 @@ app.post('/users/:email',async(req,res)=>{
 })
 
 
+// post cart item
+app.post('/carts',async(req,res)=>{
+  const cartItem=req.body;
+  const result = await cartCollection.insertOne(cartItem);
+  res.send(result)
+})
+
+// GET CART ITEM  
+app.get('/carts', async(req,res)=>{
+  const result = await cartCollection.find().toArray();
+  res.send(result);
+})
 
   } finally {
     // Ensures that the client will close when you finish/error
