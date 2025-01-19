@@ -78,12 +78,15 @@ app.post('/carts',async(req,res)=>{
   res.send(result)
 })
 
-// GET CART ITEM  
-app.get('/carts', async(req,res)=>{
-  const result = await cartCollection.find().toArray();
+// GET CART ITEM  by user
+app.get('/carts', async (req, res) => {
+  const email = req.query.email;
+  // console.log('Received email:', email); // Debugging
+  const query = { userEmail: email };
+  const result = await cartCollection.find(query).toArray();
+  // console.log('Cart items for email:', result); // Debugging
   res.send(result);
-})
-
+});
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
