@@ -175,6 +175,25 @@ app.put('/carts/increase/:id', async (req, res) => {
   }
 });
 
+// Decrease Quantity ---------------------------------------------------------------------------------
+app.put('/carts/decrease/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $inc: { quantity: -1 }, // Decrement the quantity by 1
+  };
+  try {
+    const result = await cartCollection.updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    console.error("Error decreasing quantity:", error);
+    res.status(500).send({ error: "Failed to decrease quantity" });
+  }
+});
+
+
+
+
 
   } finally {
     // Ensures that the client will close when you finish/error
