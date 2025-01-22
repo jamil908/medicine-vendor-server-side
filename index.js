@@ -137,8 +137,9 @@ app.get('/carts', async (req, res) => {
 });
 // --------------------------------------------------------------------------------------------------------------------------
 
-// Remove an Item from Cart -------------------------------------------------------------------------
 
+
+// Remove an Item from Cart -------------------------------------------------------------------------
 app.delete('/carts/:id', async (req, res) => {
   const id = req.params.id;
   
@@ -192,6 +193,24 @@ app.put('/carts/decrease/:id', async (req, res) => {
 });
 
 
+
+// Clear all items from the cart for a specific user ---------------------------------------------------------------------------------
+app.delete('/carts', async (req, res) => {
+  const email = req.query.email; // Get the user's email from the query parameter
+  const query = { userEmail: email }; // Query to match user's cart items
+
+  try {
+    const result = await cartCollection.deleteMany(query); // Delete all matching documents
+    if (result.deletedCount > 0) {
+      res.send({ success: true, message: 'Cart cleared successfully' });
+    } else {
+      res.status(404).send({ success: false, message: 'No items found in the cart' });
+    }
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    res.status(500).send({ success: false, message: 'Failed to clear cart' });
+  }
+});
 
 
 
