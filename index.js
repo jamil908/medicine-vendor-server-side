@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 require('dotenv').config();
 const port =process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId, } = require('mongodb');
 
 
 app.use(cors())
@@ -30,30 +30,69 @@ async function run() {
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 // category
     const categoryCollection=client.db('medicinePortal').collection('category');
-    const medicineCollection = client.db('medicinePortal').collection('medicines');
+// medicine
+    const MedicineCollection = client.db('medicinePortal').collection('Medicines');
+// cart
     const cartCollection = client.db('medicinePortal').collection('carts');
-    // users
+// users
     const usersCollection = client.db('medicinePortal').collection('users');
 
-    app.get('/category',async(req,res)=>{
-        const cursor = categoryCollection.find();
-        const result = await cursor.toArray()
-        res.send(result)
-    })
-// get medicine by category wise
+
+
+    // get category --------------------------------------------------------------------------------
+app.get('/category', async (req, res) => {
+  try {
+    const categories = await categoryCollection.aggregate([
+      {
+        $lookup: {
+          from: "Medicines", // The name of the Medicines collection
+          localField: "categoryName", // Field in the category collection
+          foreignField: "categoryName", // Field in the Medicines collection
+          as: "medicines",
+        },
+      },
+      {
+        $addFields: {
+          numberOfMedicines: { $size: "$medicines" }, // Count the medicines array
+        },
+      },
+      {
+        $project: {
+          medicines: 0, // Exclude the medicines array from the response
+        },
+        
+      },
+    ]).toArray();
+    res.send(categories);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).send({ error: "Failed to fetch categories" });
+  }
+});
+
+
+
+
+
+// get medicine by category wise ----------------------------------------------------------------------------------
 
 app.get('/medicines/:categoryName', async (req, res) => {
   const categoryName = req.params.categoryName;
   const query = { categoryName: categoryName }; // Match categoryName with the request parameter
-  const medicines = await medicineCollection.find(query).toArray();
+  const medicines = await MedicineCollection.find(query).toArray();
   res.send(medicines);
 });
+
+// get all medicine ------------------------------------------------------------------------------------------------
 app.get('/medicines', async (req, res) => {
-  const cursor = medicineCollection.find();
+  const cursor = MedicineCollection.find();
         const result = await cursor.toArray()
         res.send(result)
 });
-// post users data
+
+
+// post users data -------------------------------------------------------------------------------------------------
+
 app.post('/users/:email',async(req,res)=>{
   const email = req.params.email;
   const query = {email}
@@ -71,14 +110,23 @@ app.post('/users/:email',async(req,res)=>{
 })
 
 
-// post cart item
-app.post('/carts',async(req,res)=>{
-  const cartItem=req.body;
-  const result = await cartCollection.insertOne(cartItem);
-  res.send(result)
-})
+// post cart item by user -------------------------------------------------------------------------------------------
 
-// GET CART ITEM  by user
+app.post('/carts', async (req, res) => {
+  const cartItem = req.body;
+
+  delete cartItem._id;
+
+  try {
+    const result = await cartCollection.insertOne(cartItem);
+    res.send(result);
+  } catch (error) {
+    console.error('Error inserting cart item:', error);
+    res.status(500).send({ error: 'Failed to add item to the cart' });
+  }
+});
+
+// GET CART ITEM  by user---------------------------------------------------------------------------------------------
 app.get('/carts', async (req, res) => {
   const email = req.query.email;
   // console.log('Received email:', email); // Debugging
@@ -87,6 +135,31 @@ app.get('/carts', async (req, res) => {
   // console.log('Cart items for email:', result); // Debugging
   res.send(result);
 });
+// --------------------------------------------------------------------------------------------------------------------------
+
+// Remove an Item from Cart -------------------------------------------------------------------------
+
+app.delete('/carts/:id', async (req, res) => {
+  const id = req.params.id;
+  
+  // Ensure `id` is converted to ObjectId
+  const query = { _id: new ObjectId(id) };
+  
+  try {
+    const result = await cartCollection.deleteOne(query);
+    if (result.deletedCount > 0) {
+      res.send({ success: true, message: 'Item removed successfully' });
+    } else {
+      res.status(404).send({ success: false, message: 'Item not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting cart item:', error);
+    res.status(500).send({ success: false, message: 'Failed to delete cart item' });
+  }
+});
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
