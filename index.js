@@ -159,6 +159,22 @@ app.delete('/carts/:id', async (req, res) => {
 });
 
 
+// Increase Quantity ---------------------------------------------------------------------------------
+app.put('/carts/increase/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }; // Ensure you use ObjectId for MongoDB queries
+  const updateDoc = {
+    $inc: { quantity: 1 }, // Increment the quantity by 1
+  };
+  try {
+    const result = await cartCollection.updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    console.error("Error increasing quantity:", error);
+    res.status(500).send({ error: "Failed to increase quantity" });
+  }
+});
+
 
   } finally {
     // Ensures that the client will close when you finish/error
