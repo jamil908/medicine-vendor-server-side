@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+
 const app = express();
 require('dotenv').config();
+const stripe = require('stripe')(process.env.PK_SECRET_KEY)
 const port =process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId, } = require('mongodb');
 
@@ -36,6 +38,7 @@ async function run() {
     const cartCollection = client.db('medicinePortal').collection('carts');
 // users
     const usersCollection = client.db('medicinePortal').collection('users');
+    const paymentCollection = client.db('medicinePortal').collection('payments');
 
 
 
@@ -71,11 +74,7 @@ app.get('/category', async (req, res) => {
 });
 
 
-
-
-
 // get medicine by category wise ----------------------------------------------------------------------------------
-
 app.get('/medicines/:categoryName', async (req, res) => {
   const categoryName = req.params.categoryName;
   const query = { categoryName: categoryName }; // Match categoryName with the request parameter
@@ -93,8 +92,10 @@ app.get('/medicines', async (req, res) => {
 
 // post users data -------------------------------------------------------------------------------------------------
 
-app.post('/users/:email',async(req,res)=>{
-  const email = req.params.email;
+app.post('/users/:email', async (req, res) => {
+  try {
+    // Your code...
+    const email = req.params.email;
   const query = {email}
   const user = req.body
   // check if user exist in database
@@ -107,11 +108,14 @@ app.post('/users/:email',async(req,res)=>{
     timestamp : Date.now(),
   })
   res.send(result)
-})
+  } catch (error) {
+    console.error('Error saving user:', error);
+    res.status(500).send({ error: 'Failed to save user' });
+  }
+});
 
 
 // post cart item by user -------------------------------------------------------------------------------------------
-
 app.post('/carts', async (req, res) => {
   const cartItem = req.body;
 
@@ -212,9 +216,53 @@ app.delete('/carts', async (req, res) => {
   }
 });
 
+//payment intent --------------------------------------------------------------------------------------------------
+app.post("/create-payment-intent", async (req, res) => {
+    const { price } = req.body;
+  const amount = parseInt(price * 100);
+  if (!amount || amount < 1000) { 
+    return res.status(400).send({
+        error: "Invalid amount. Amount must be at least 50 BDT."
+    });
+}
+console.log(amount)
+  // Create a PaymentIntent with the order amount and currency
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: "usd",
+    payment_method_types:['card'],
+  });
+  res.send({
+    clientSecrete: paymentIntent.client_secret,
+  })
+  })
 
-
-  } finally {
+  // payment post --------------------------------------------------------------------------------------------------
+  app.post('/payments', async (req, res) => {
+    const payment = req.body;
+    try {
+      const paymentResult = await paymentCollection.insertOne(payment);
+      console.log('payment info', payment);
+      const query = {
+        _id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+      // Combine both results into a single response object
+      res.send({
+        success: true,
+        paymentResult,
+        deleteResult
+      });
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      res.status(500).send({ success: false, message: "Payment processing failed" });
+    }
+  });
+  
+}
+   finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
