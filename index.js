@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-
+const jwt = require('jsonwebtoken');
 const app = express();
 require('dotenv').config();
 const stripe = require('stripe')(process.env.PK_SECRET_KEY)
@@ -38,11 +38,36 @@ async function run() {
     const cartCollection = client.db('medicinePortal').collection('carts');
 // users
     const usersCollection = client.db('medicinePortal').collection('users');
+// payments 
     const paymentCollection = client.db('medicinePortal').collection('payments');
 
+// JWT RELATED API __________________________________________________________________________________________
 
+app.post('/jwt',async(req,res)=>{
+  const user = req.body;
+  const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
+    expiresIn:'2h'
+  });
+  res.send({ token });
+})
+// jwt middle were _____________________--------------------------------
+const verifyToken = (req,res,next)=>{
+  console.log('inside verify token',req.headers.authorization);
+  if(!req.headers.authorization){
+    return res.status(401).send({message:'forbidden access'});
 
-    // get category --------------------------------------------------------------------------------
+  }
+  const token = req.headers.authorization.split(' ')[1]
+ jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(error,decoded)=>{
+  if(error){
+    return res.status(401).send({message: 'forbidden access'})
+  }
+  req.decoded = decoded;
+  next();
+ })
+}
+
+// get category --------------------------------------------------------------------------------
 app.get('/category', async (req, res) => {
   try {
     const categories = await categoryCollection.aggregate([
@@ -260,7 +285,92 @@ console.log(amount)
       res.status(500).send({ success: false, message: "Payment processing failed" });
     }
   });
-  
+
+  // get payments data for invoice page --------------------------------------------------------------------------------------------------------------
+  app.get("/payments/:transactionId", async (req, res) => {
+    const transactionId = req.params.transactionId;
+    const payment = await paymentCollection.findOne({ transactionId });
+    res.send(payment);
+  });
+
+
+  // _________________________________________--------------------------------________________________________________
+  // -----------------------------------------         Admin related          ---------------------------------------
+// verify admin -------------------------------------------------
+// const verifyAdmin = async (req, res, next) => {
+//   const email = req.headers.email; // Pass user's email in headers
+//   const user = await usersCollection.findOne({ email });
+
+//   if (user && user.role === 'admin') {
+//     next();
+//   } else {
+//     res.status(403).send({ message: 'Forbidden: Only admins can perform this action.' });
+//   }
+// };
+
+const verifyAdmin = async (req, res, next) => {
+  try {
+    const email = req.headers.email; // User's email passed in headers (temporarily).
+    if (!email) {
+      return res.status(401).send({ message: 'Unauthorized: Email not provided' });
+    }
+
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return res.status(404).send({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      // Proceed to the next middleware or route handler
+      next();
+    } else {
+      res.status(403).send({ message: 'Forbidden: Only admins can perform this action' });
+    }
+  } catch (error) {
+    console.error('Error in verifyAdmin middleware:', error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+};
+
+  // get all users___________________________________________________________________________
+app.get('/users',verifyToken, async (req, res) => {
+  console.log(req.headers)
+  const users = await usersCollection.find().toArray();
+  res.send(users);
+});
+
+// Update user role_____________________________________________________________________________
+// app.put('/users/:id', async (req, res) => {
+//   const id = req.params.id;
+//   const { role } = req.body;
+//   const filter = { _id: new ObjectId(id) };
+//   const updateDoc = { $set: { role } };
+//   const result = await usersCollection.updateOne(filter, updateDoc);
+//   res.send(result);
+// });
+
+app.put('/users/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { role } = req.body; // New role to assign
+    if (!role) {
+      return res.status(400).send({ message: 'Role is required' });
+    }
+
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = { $set: { role } };
+
+    const result = await usersCollection.updateOne(filter, updateDoc);
+    res.send(result);
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).send({ message: 'Failed to update user role' });
+  }
+});
+
+
+
+
 }
    finally {
     // Ensures that the client will close when you finish/error
