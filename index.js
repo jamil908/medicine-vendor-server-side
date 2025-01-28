@@ -310,7 +310,7 @@ console.log(amount)
 
 const verifyAdmin = async (req, res, next) => {
   try {
-    const email = req.headers.email; // User's email passed in headers (temporarily).
+    const email = req.decoded.email; // User's email passed in headers (temporarily).
     if (!email) {
       return res.status(401).send({ message: 'Unauthorized: Email not provided' });
     }
@@ -333,23 +333,29 @@ const verifyAdmin = async (req, res, next) => {
 };
 
   // get all users___________________________________________________________________________
-app.get('/users',verifyToken, async (req, res) => {
+app.get('/users',verifyToken,verifyAdmin, async (req, res) => {
   console.log(req.headers)
   const users = await usersCollection.find().toArray();
   res.send(users);
 });
-
+// check admin
+app.get('/users/admin/:email',verifyToken,async(req,res)=>{
+  const email = req.params.email;
+  if(email !== req.decoded.email){
+    return res.status(403).send({message:'unauthorized access'})
+  }
+  const query = {email:email};
+  const user = await usersCollection.findOne(query)
+  let admin =false;
+  if(user){
+    admin = user?.role === 'admin'
+  }
+  res.send({admin})
+})
 // Update user role_____________________________________________________________________________
-// app.put('/users/:id', async (req, res) => {
-//   const id = req.params.id;
-//   const { role } = req.body;
-//   const filter = { _id: new ObjectId(id) };
-//   const updateDoc = { $set: { role } };
-//   const result = await usersCollection.updateOne(filter, updateDoc);
-//   res.send(result);
-// });
+/
 
-app.put('/users/:id', async (req, res) => {
+app.put('/users/:id',verifyToken,verifyAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const { role } = req.body; // New role to assign
