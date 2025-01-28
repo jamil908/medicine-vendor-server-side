@@ -26,10 +26,10 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
 // category
     const categoryCollection=client.db('medicinePortal').collection('category');
 // medicine
@@ -50,7 +50,7 @@ app.post('/jwt',async(req,res)=>{
   });
   res.send({ token });
 })
-// jwt middle were _____________________--------------------------------
+//  _____________________--------------jwt middle were------------------_________________________________________________
 const verifyToken = (req,res,next)=>{
   console.log('inside verify token',req.headers.authorization);
   if(!req.headers.authorization){
@@ -297,16 +297,6 @@ console.log(amount)
   // _________________________________________--------------------------------________________________________________
   // -----------------------------------------         Admin related          ---------------------------------------
 // verify admin -------------------------------------------------
-// const verifyAdmin = async (req, res, next) => {
-//   const email = req.headers.email; // Pass user's email in headers
-//   const user = await usersCollection.findOne({ email });
-
-//   if (user && user.role === 'admin') {
-//     next();
-//   } else {
-//     res.status(403).send({ message: 'Forbidden: Only admins can perform this action.' });
-//   }
-// };
 
 const verifyAdmin = async (req, res, next) => {
   try {
