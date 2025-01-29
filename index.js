@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+
 const jwt = require('jsonwebtoken');
 const app = express();
 require('dotenv').config();
@@ -328,7 +329,7 @@ app.get('/users',verifyToken,verifyAdmin, async (req, res) => {
   const users = await usersCollection.find().toArray();
   res.send(users);
 });
-// check admin
+// check admin_______________________________________________________________________________
 app.get('/users/admin/:email',verifyToken,async(req,res)=>{
   const email = req.params.email;
   if(email !== req.decoded.email){
@@ -361,6 +362,65 @@ app.put('/users/:id',verifyToken,verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error updating user role:', error);
     res.status(500).send({ message: 'Failed to update user role' });
+  }
+});
+
+// delete category_________________________________________________________________________________
+
+app.delete('/category/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) };
+
+  try {
+    const result = await categoryCollection.deleteOne(query);
+    if (result.deletedCount > 0) {
+      res.send({ success: true, message: 'Category deleted successfully' });
+    } else {
+      res.status(404).send({ success: false, message: 'Category not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).send({ success: false, message: 'Failed to delete category' });
+  }
+});
+// post new category ______________________________________________________________________________________________
+
+app.post('/categories', async (req, res) => {
+  const { categoryName, categoryImage, quantity } = req.body;
+  
+  if (!categoryName || !categoryImage || !quantity) {
+    return res.status(400).send({ error: 'All fields (categoryName, categoryImage, quantity) are required.' });
+  }
+
+  try {
+    const newCategory = {
+      categoryName,
+      categoryImage,
+      quantity,
+      timestamp: Date.now(),
+    };
+    const result = await categoryCollection.insertOne(newCategory);
+    if (result.insertedId ) {
+      res.status(201).send({ success: true, message: 'Category added successfully!' });
+    } else {
+      res.status(500).send({ error: 'Failed to add category.' });
+    }
+  } catch (error) {
+    console.error('Error adding category:', error);
+    res.status(500).send({ error: 'An error occurred while adding the category.' });
+  }
+});
+
+
+// get all carts data_____________________________________________________________________________________________________________
+// GET all cart items (admin or authorized user only) ------------------------------------------------------------
+app.get('/carts/all', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const allCartItems = await cartCollection.find().toArray();
+    res.send(allCartItems);
+  } catch (error) {
+    console.error('Error fetching cart items:', error);
+    res.status(500).send({ error: 'Failed to fetch cart items' });
   }
 });
 
