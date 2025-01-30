@@ -41,6 +41,8 @@ async function run() {
     const usersCollection = client.db('medicinePortal').collection('users');
 // payments 
     const paymentCollection = client.db('medicinePortal').collection('payments');
+// sells collection
+    const sellsCollection = client.db('medicinePortal').collection('sells');
 
 // JWT RELATED API __________________________________________________________________________________________
 
@@ -416,11 +418,36 @@ app.post('/categories', async (req, res) => {
 // GET all cart items (admin or authorized user only) ------------------------------------------------------------
 app.get('/carts/all', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const allCartItems = await cartCollection.find().toArray();
+    const allCartItems = await sellsCollection.find().toArray();
     res.send(allCartItems);
   } catch (error) {
     console.error('Error fetching cart items:', error);
     res.status(500).send({ error: 'Failed to fetch cart items' });
+  }
+});
+
+// get sells product
+app.post('/sales', async (req, res) => {
+  const { cartData, transactionId } = req.body; // Get cart data and transactionId from request
+  try {
+      // Prepare the data to be inserted
+      const sellsData = cartData.map(item => ({
+          ...item,
+          transactionId, // Link the transaction ID to each sold item
+          soldAt: new Date(), // Add a timestamp
+      }));
+
+      // Insert into sellsCollection
+      const result = await sellsCollection.insertMany(sellsData);
+
+      res.send({
+          success: true,
+          message: "Sales data saved successfully",
+          result
+      });
+  } catch (error) {
+      console.error("Error saving sales data:", error);
+      res.status(500).send({ success: false, message: "Failed to save sales data" });
   }
 });
 
